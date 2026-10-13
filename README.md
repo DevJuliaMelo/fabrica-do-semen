@@ -22,4 +22,3 @@ O progresso fica salvo no próprio navegador de cada jogador.
 
 - As ilustrações são esquemas didáticos simplificados, não ilustrações médicas exatas.
 - O pH do laboratório é um modelo simplificado. O volume mínimo (1,4 mL) e o pH de referência (≥ 7,2) seguem o manual da OMS (2021).
-- O ranking ao vivo da turma só existe na versão hospedada no claude.ai. Nesta versão, o botão de ranking fica escondido.
