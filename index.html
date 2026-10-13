@@ -1,0 +1,1119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Jogo educativo sobre as glândulas acessórias masculinas: vesículas seminais, próstata e bulbouretrais.">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Fábrica do Sêmen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: jogo de uma tela por vez — HUD fixo no topo, mapa de fases em trilha, cada fase em seu próprio palco. */
+:root{
+  --bg:#EEF1F7; --surface:#FFFFFF; --sunk:#E3E8F1; --ink:#141C26; --muted:#566273; --line:#CBD3DE;
+  --ves:#C77A00; --pro:#2B55C8; --cow:#0A8F7C; --spz:#8048C8; --gold:#E0A100;
+  --ok:#1C8A4C; --alarm:#CF2C3A; --warn:#B26A00;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0E131A; --surface:#171E28; --sunk:#111821; --ink:#E7ECF2; --muted:#9AA6B6; --line:#2A3544;
+  --ves:#F0A73A; --pro:#7C9BFF; --cow:#38C9B2; --spz:#B48AF0; --gold:#FFC83D;
+  --ok:#43C57E; --alarm:#FF5D69; --warn:#F0A73A; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0E131A; --surface:#171E28; --sunk:#111821; --ink:#E7ECF2; --muted:#9AA6B6; --line:#2A3544;
+  --ves:#F0A73A; --pro:#7C9BFF; --cow:#38C9B2; --spz:#B48AF0; --gold:#FFC83D;
+  --ok:#43C57E; --alarm:#FF5D69; --warn:#F0A73A; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15.5px;line-height:1.55}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.08}
+p{margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--pro);outline-offset:2px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* HUD */
+.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hud-in{max-width:980px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-family:var(--display);font-weight:800;font-size:1.15rem;margin-right:auto;border:0;background:none;padding:4px 0;display:flex;align-items:center;gap:8px}
+.logo span{color:var(--ves)}
+.logo svg{width:38px;height:20px;color:var(--spz)}
+.hud-pill{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hud-btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px}
+
+.wrap{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:22px 72px}
+.screen{display:none}
+.screen.on{display:grid;gap:20px;animation:enter .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes enter{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+
+.btn{border:0;border-radius:12px;padding:12px 20px;font-weight:600;background:var(--ink);color:var(--surface);transition:transform .12s}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:translateY(1px) scale(.98)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn.alt{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn.big{font-size:1.05rem;padding:14px 26px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* Mascote */
+.nado{color:var(--spz);display:block}
+.nado .tail{transform-box:fill-box;transform-origin:right center;animation:wig .45s ease-in-out infinite alternate}
+@keyframes wig{from{transform:skewY(-14deg)}to{transform:skewY(14deg)}}
+.bob{animation:bob 2.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-8px) rotate(-3deg)}}
+.talk{display:flex;align-items:center;gap:14px}
+.talk .nado{width:110px;flex:none}
+.bubble{position:relative;background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:14px 18px;min-width:0}
+.bubble::before{content:"";position:absolute;left:-10px;top:50%;width:16px;height:16px;background:var(--surface);border-left:2px solid var(--line);border-bottom:2px solid var(--line);transform:translateY(-50%) rotate(45deg)}
+.bubble b{font-family:var(--display)}
+
+/* Mapa */
+.map-head{display:grid;gap:14px}
+.map-head h1{font-size:clamp(2.2rem,7vw,3.6rem);font-weight:800;letter-spacing:-.02em}
+.map-head h1 span{color:var(--ves)}
+.trail{list-style:none;margin:0;padding:8px 0;display:grid;gap:14px;position:relative}
+.trail::before{content:"";position:absolute;left:50%;top:20px;bottom:20px;border-left:4px dashed var(--line);transform:translateX(-50%)}
+.trail li{display:flex;position:relative}
+.trail li:nth-child(odd){justify-content:flex-start}
+.trail li:nth-child(even){justify-content:flex-end}
+.lvl{width:min(100%,420px);display:flex;align-items:center;gap:14px;text-align:left;border:2px solid var(--line);background:var(--surface);border-radius:20px;padding:14px 16px;transition:transform .15s,border-color .15s;position:relative}
+.lvl:hover{transform:translateY(-3px) rotate(-.5deg)}
+.lvl .ic{width:58px;height:58px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:28px;background:color-mix(in srgb,var(--c) 22%,var(--surface));border:3px solid var(--c)}
+.lvl .tx{display:grid;gap:2px;min-width:0}
+.lvl .tx small{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lvl .tx b{font-family:var(--display);font-size:1.2rem}
+.lvl .tx span{color:var(--muted);font-size:14px}
+.lvl .st{margin-left:auto;font-size:18px;letter-spacing:2px;white-space:nowrap}
+.lvl.next{border-color:var(--c);box-shadow:0 0 0 5px color-mix(in srgb,var(--c) 18%,transparent);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 10px color-mix(in srgb,var(--c) 6%,transparent)}}
+.lvl.locked{opacity:.55;filter:grayscale(.8)}
+.lvl.locked:hover{transform:none}
+.star-on{color:var(--gold)} .star-off{color:var(--line)}
+.map-foot{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.linkish{border:0;background:none;color:var(--muted);text-decoration:underline;font-size:13px;padding:4px}
+
+/* Cartão de fase */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px;display:grid;gap:18px;min-width:0}
+.lvl-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.lvl-head h2{font-size:clamp(1.6rem,4.5vw,2.3rem);font-weight:800}
+.lvl-head p{color:var(--muted);max-width:60ch;margin-top:4px}
+
+/* História */
+.story{display:grid;gap:18px;min-height:380px;align-content:space-between}
+.art{min-height:160px;display:grid;place-items:center}
+.art .nado.huge{width:220px}
+.swarm{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:360px}
+.swarm .nado{width:58px}
+.swarm .nado:nth-child(3n){animation-delay:-.6s} .swarm .nado:nth-child(3n+1){animation-delay:-1.2s}
+.hero-char{display:grid;justify-items:center;gap:8px}
+.hero-char .ava{width:130px;height:130px;border-radius:50%;display:grid;place-items:center;font-size:64px;background:color-mix(in srgb,var(--c) 22%,var(--surface));border:5px solid var(--c)}
+.hero-char .role{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--c);font-weight:500}
+.slide-text{display:grid;gap:8px;text-align:center;max-width:56ch;justify-self:center}
+.slide-text h3{font-size:clamp(1.4rem,4vw,1.9rem)}
+.slide-text p{font-size:17px}
+.dots{display:flex;gap:6px;justify-content:center}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--line);transition:all .25s}
+.dots i.on{background:var(--ink);width:24px;border-radius:5px}
+.nav{display:flex;justify-content:space-between;gap:10px}
+.recipe{display:flex;height:42px;border-radius:12px;overflow:hidden;border:1px solid var(--line);width:min(100%,520px)}
+.recipe i{display:grid;place-items:center;height:100%;color:#fff;font-family:var(--mono);font-size:13px;font-style:normal;font-weight:500;animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes grow{from{flex-basis:0;width:0}}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);justify-content:center}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:var(--c)}
+.trip{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center}
+.trip li{border:2px solid var(--c);border-radius:999px;padding:6px 14px;font-weight:600;font-size:14px;background:color-mix(in srgb,var(--c) 10%,var(--surface));animation:enter .4s both}
+.trip li.arrow{border:0;background:none;padding:0;color:var(--muted)}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.opt{border:2px solid var(--line);background:var(--surface);border-radius:14px;padding:14px;text-align:left;font-weight:600;transition:transform .12s,border-color .12s}
+.opt:hover{transform:translateY(-2px);border-color:var(--muted)}
+.opt.right{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surface))}
+.opt.wrong{border-color:var(--alarm);animation:shake .4s}
+.feedback{border-radius:12px;padding:12px 14px;font-size:15px;background:var(--sunk);border-left:5px solid var(--muted)}
+.feedback.ok{border-left-color:var(--ok)} .feedback.err{border-left-color:var(--alarm)}
+@keyframes shake{20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+
+/* Montar o caminho */
+.line{display:flex;align-items:stretch;padding:4px 2px;position:relative}
+.node,.station{flex:1 1 0;min-width:0;border-radius:14px;padding:12px;display:grid;gap:6px;align-content:start;text-align:center;justify-items:center}
+.node{background:var(--sunk);border:1px solid var(--line)}
+.node b{font-family:var(--display)}
+.node small{color:var(--muted);font-size:12.5px;line-height:1.35}
+.station{border:3px dashed var(--line);transition:border-color .3s,background .3s}
+.station .ava{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:26px;background:var(--sunk);transition:transform .3s}
+.station .name{font-family:var(--display);font-weight:700;line-height:1.15}
+.station small{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.station.empty .name{color:var(--muted);font-weight:500}
+.station.active{border-color:var(--ink);background:var(--sunk)}
+.station.filled{border-style:solid;border-color:var(--c);background:color-mix(in srgb,var(--c) 10%,var(--surface))}
+.station.filled .ava{background:color-mix(in srgb,var(--c) 25%,var(--surface));animation:popin .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes popin{from{transform:scale(.3)}}
+.pipe{flex:0 0 30px;align-self:center;height:12px;background:var(--line);border-radius:6px}
+.pipe.lit{background:var(--c);background-image:repeating-linear-gradient(90deg,transparent 0 10px,rgba(255,255,255,.35) 10px 16px);background-size:32px 100%;animation:flow 1s linear infinite}
+@keyframes flow{to{background-position:32px 0}}
+.swimmer{position:absolute;left:0;top:0;width:46px;pointer-events:none;z-index:3}
+.tray{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.chip{border:2px solid var(--line);background:var(--surface);border-radius:14px;padding:12px;text-align:left;display:flex;gap:10px;align-items:center;transition:transform .12s,border-color .12s}
+.chip:hover{transform:translateY(-2px) rotate(-1deg);border-color:var(--muted)}
+.chip .ava{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:20px;background:var(--sunk)}
+.chip b{display:block}
+.chip small{color:var(--muted);font-size:12.5px}
+.chip.wrong{border-color:var(--alarm);animation:shake .4s}
+.flyer{position:fixed;z-index:50;pointer-events:none;margin:0}
+.speech{display:flex;gap:10px;align-items:center}
+.speech .nado{width:70px;flex:none}
+.speech .bubble{flex:1}
+.speech.err .bubble{border-color:var(--alarm)}
+.speech.ok .bubble{border-color:var(--ok)}
+.speech.err .bubble::before{border-color:var(--alarm)} .speech.ok .bubble::before{border-color:var(--ok)}
+
+/* Chuva de ingredientes */
+.cbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.hearts{font-size:22px;letter-spacing:2px}
+.goal{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13px}
+.goal .meter{width:140px;height:12px;border-radius:6px;background:var(--sunk);border:1px solid var(--line);overflow:hidden}
+.goal .meter i{display:block;height:100%;background:var(--c);transition:width .25s}
+.arena{position:relative;height:min(62vh,470px);min-height:340px;border-radius:18px;overflow:hidden;border:2px solid var(--line);touch-action:none;user-select:none;-webkit-user-select:none;
+  background:radial-gradient(circle at 20% 15%,color-mix(in srgb,var(--c) 14%,transparent),transparent 45%),linear-gradient(180deg,var(--sunk),var(--surface))}
+.arena.hit{animation:shake .35s}
+.item{position:absolute;left:0;top:0;padding:8px 13px;border-radius:999px;background:var(--surface);border:2px solid var(--ink);font-weight:600;font-size:14px;white-space:nowrap;box-shadow:0 3px 0 var(--ink);will-change:transform}
+.catcher{position:absolute;left:0;bottom:10px;width:128px;display:grid;justify-items:center;gap:2px;will-change:transform}
+.catcher .bowl{width:128px;height:72px;display:grid;place-items:center}
+.catcher .bowl .ch{height:72px;width:auto}
+.catcher small{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink);background:var(--surface);border-radius:6px;padding:1px 6px}
+.catcher.gulp .bowl{animation:gulp .25s}
+@keyframes gulp{50%{transform:scale(1.12,.9)}}
+.pop{position:absolute;font-family:var(--display);font-weight:800;font-size:15px;pointer-events:none;white-space:nowrap;animation:rise 1.3s ease-out forwards;padding:3px 9px;border-radius:8px;background:var(--surface)}
+.pop.good{color:var(--ok);border:2px solid var(--ok)} .pop.bad{color:var(--alarm);border:2px solid var(--alarm)}
+@keyframes rise{to{transform:translateY(-70px);opacity:0}}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(3px);z-index:5}
+.ov-card{background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:20px;display:grid;gap:12px;justify-items:center;text-align:center;max-width:420px;animation:enter .35s}
+.ov-card .ava{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;font-size:42px;background:color-mix(in srgb,var(--c) 22%,var(--surface));border:4px solid var(--c)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.tags span{border:2px solid var(--c);border-radius:999px;padding:3px 10px;font-size:13px;font-weight:600}
+.ctl-hint{font-size:13px;color:var(--muted);text-align:center}
+
+/* Laboratório */
+.lab{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px}
+.dials{display:grid;gap:12px;align-content:start}
+.dial{display:grid;gap:4px;border:2px solid color-mix(in srgb,var(--c) 40%,var(--line));border-radius:14px;padding:10px 14px}
+.dial-top{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.dial label{font-weight:700;display:flex;align-items:center;gap:8px}
+.dial label .e{font-size:20px}
+.dial small{color:var(--muted);font-size:12.5px}
+.dial output{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px;white-space:nowrap}
+.dial input[type=range]{width:100%;accent-color:var(--c);height:26px}
+.bench{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:start}
+.tube-wrap{display:flex;gap:6px}
+.scale{display:flex;flex-direction:column-reverse;justify-content:space-between;height:260px;font-family:var(--mono);font-size:11px;color:var(--muted);padding-bottom:22px;font-variant-numeric:tabular-nums}
+.tube{width:66px;height:260px;border:3px solid var(--line);border-top:0;border-radius:0 0 34px 34px;display:flex;flex-direction:column-reverse;overflow:hidden;background:var(--sunk);position:relative}
+.tube.small{height:170px;width:52px}
+.tube i{display:block;width:100%;background:var(--c);transition:height .45s cubic-bezier(.3,1.3,.5,1);opacity:.9}
+.tube .bub{position:absolute;bottom:6px;width:8px;height:8px;border-radius:50%;border:2px solid rgba(255,255,255,.7);animation:bub 2.6s ease-in infinite}
+@keyframes bub{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-150px);opacity:0}}
+.readouts{display:grid;gap:8px;min-width:0}
+.ro{display:grid;gap:3px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);transition:background .3s}
+.ro.ok{background:color-mix(in srgb,var(--ok) 8%,var(--surface))}
+.ro.bad{background:color-mix(in srgb,var(--alarm) 8%,var(--surface))}
+.ro.warn{background:color-mix(in srgb,var(--warn) 8%,var(--surface))}
+.ro-top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.ro-top b{font-weight:600;font-size:14px}
+.ro-top .val{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.ro small{color:var(--muted);font-size:12.5px;line-height:1.35}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;display:inline-block;margin-right:6px;vertical-align:-1px}
+.dot.ok{background:var(--ok)} .dot.bad{background:var(--alarm)} .dot.warn{background:var(--warn)}
+.mission{display:grid;gap:6px}
+.mission .bar{height:14px;border-radius:7px;background:var(--sunk);border:1px solid var(--line);overflow:hidden}
+.mission .bar i{display:block;height:100%;background:var(--ok);transition:width .4s cubic-bezier(.3,1.3,.5,1)}
+.mission span{font-family:var(--mono);font-size:13px}
+
+/* Detetive */
+.case{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:start}
+
+/* Vitória */
+.modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(4px)}
+.modal .ov-card{max-width:440px;padding:26px}
+.modal h3{font-size:1.9rem}
+.bigstars{display:flex;gap:10px;font-size:52px;line-height:1}
+.bigstars span{animation:starpop .5s cubic-bezier(.3,1.7,.5,1) both}
+.bigstars span:nth-child(2){animation-delay:.25s} .bigstars span:nth-child(3){animation-delay:.5s}
+@keyframes starpop{from{transform:scale(0) rotate(-90deg);opacity:0}}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:70;width:100%;height:100%}
+
+/* Diploma */
+.diploma{border:6px double var(--gold);border-radius:20px;padding:28px 22px;display:grid;gap:14px;justify-items:center;text-align:center;background:var(--surface)}
+.diploma h2{font-size:clamp(1.8rem,5vw,2.6rem);font-weight:800}
+.diploma .who{font-family:var(--display);font-size:clamp(1.6rem,5vw,2.4rem);font-weight:700;border-bottom:2px solid var(--line);padding:0 18px 4px;min-width:60%}
+.diploma input{font:inherit;padding:10px 12px;border-radius:10px;border:2px solid var(--line);background:var(--surface);color:var(--ink);width:min(100%,320px);text-align:center}
+
+/* Ilustrações */
+.ch{display:block;width:100%;height:100%;overflow:visible}
+.ava .ch{width:78%;height:78%}
+.hero-char .ava .ch{width:84%;height:84%}
+.duo{display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;align-items:center;justify-items:center;width:100%}
+.anat{width:100%;max-width:420px;height:auto;display:block}
+.anat .part{transition:opacity .45s}
+.anat .bex .body{fill:color-mix(in srgb,var(--muted) 22%,var(--surface));stroke:var(--muted);stroke-width:2}
+.anat .ves circle{fill:var(--ves)}
+.anat .pro ellipse{fill:var(--pro)}
+.anat .cow circle{fill:var(--cow)}
+.anat .cow .dd{stroke:var(--cow);stroke-width:3;fill:none}
+.anat .tes ellipse{fill:var(--spz)}
+.anat .tes .epi{stroke:var(--spz);stroke-width:7;fill:none;opacity:.55;stroke-linecap:round}
+.anat .def .duct{stroke:color-mix(in srgb,var(--spz) 55%,var(--muted));stroke-width:5;fill:none;stroke-linecap:round}
+.anat .ure .peni{fill:color-mix(in srgb,var(--muted) 14%,var(--surface));stroke:var(--line);stroke-width:2}
+.anat .ure .tube{stroke:color-mix(in srgb,var(--ink) 40%,var(--surface));stroke-width:7;stroke-linecap:round;fill:none}
+.anat .ld{stroke:var(--muted);stroke-width:1.2;stroke-dasharray:3 3}
+.anat .lbl{fill:var(--ink);font-family:var(--body);font-size:14px;font-weight:600}
+.anat .mover ellipse{fill:var(--spz);stroke:var(--surface);stroke-width:1.5}
+.anat .mover path{stroke:var(--spz);stroke-width:2;fill:none}
+.anat.dim .part{opacity:.13}
+.anat.on-ves .part.ves,.anat.on-pro .part.pro,.anat.on-cow .part.cow,.anat.on-bex .part.bex,
+.anat.on-tes .part.tes,.anat.on-def .part.def,.anat.on-ure .part.ure{opacity:1}
+@keyframes glow{50%{filter:drop-shadow(0 0 7px var(--gold))}}
+.anat.dim.focus.on-ves .part.ves,.anat.dim.focus.on-pro .part.pro,.anat.dim.focus.on-cow .part.cow,.anat.dim.focus.on-tes .part.tes{animation:glow 1.6s ease-in-out infinite}
+.anat-box{display:grid;gap:6px;justify-items:center;width:100%}
+.anat-box small{color:var(--muted);font-size:12.5px;text-align:center}
+.path-grid{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:18px;align-items:center}
+.opt .ch{width:34px;height:34px;flex:none}
+.opt.withart{display:flex;gap:10px;align-items:center}
+.dial label .e .ch,.dial label .e .nado{width:34px;height:34px}
+@media (max-width:720px){ .duo,.path-grid{grid-template-columns:1fr} .duo .hero-char .ava{width:100px;height:100px} }
+
+/* Nome + Ranking */
+.namecard{display:grid;gap:8px;background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:14px 16px}
+.namecard label{display:grid;gap:2px}
+.namecard small{color:var(--muted);font-size:13px}
+.namerow{display:flex;gap:8px;flex-wrap:wrap}
+.namerow input{flex:1 1 180px;min-width:0;font:inherit;padding:10px 12px;border-radius:10px;border:2px solid var(--line);background:var(--surface);color:var(--ink)}
+.rank{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.rank li{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:12px 16px;animation:enter .35s}
+.rank li.me{border-color:var(--spz);box-shadow:0 0 0 4px color-mix(in srgb,var(--spz) 18%,transparent)}
+.rank .pos{font-family:var(--display);font-weight:800;font-size:1.6rem;text-align:center;font-variant-numeric:tabular-nums}
+.rank .who{display:grid;gap:4px;min-width:0}
+.rank .who b{font-family:var(--display);font-size:1.25rem;overflow-wrap:anywhere}
+.rank .who small{color:var(--muted);font-size:13px;display:flex;align-items:center;gap:6px}
+.rank .live{width:9px;height:9px;border-radius:50%;background:var(--line);display:inline-block}
+.rank .live.on{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
+.rank .sbar{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}
+.rank .sbar i{display:block;height:100%;background:var(--gold);transition:width .5s}
+.rank .score{font-family:var(--mono);font-size:1.2rem;font-weight:500;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rank li:nth-child(1){border-color:var(--gold)}
+
+details.ficha{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 18px}
+details.ficha summary{font-family:var(--display);font-weight:700;font-size:1.1rem;cursor:pointer}
+.tbl{overflow-x:auto;margin-top:12px}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:14px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:500}
+td:first-child{font-weight:600;white-space:nowrap}
+.note{color:var(--muted);font-size:12.5px;margin-top:10px}
+
+@media (max-width:720px){
+  .trail::before{left:36px}
+  .trail li:nth-child(even),.trail li:nth-child(odd){justify-content:flex-start}
+  .line{flex-direction:column}
+  .pipe{flex:0 0 22px;width:12px;height:auto;align-self:center}
+  .pipe.lit{background-image:repeating-linear-gradient(180deg,transparent 0 8px,rgba(255,255,255,.35) 8px 14px);background-size:100% 28px;animation-name:flowv}
+  .station{grid-template-columns:auto 1fr;text-align:left;justify-items:start;align-items:center}
+  .station .ava{grid-row:span 2}
+  .lab,.case{grid-template-columns:1fr}
+  .card{padding:16px}
+  .talk .nado{width:80px}
+}
+@keyframes flowv{to{background-position:0 28px}}
+@media (max-width:420px){ .bench{grid-template-columns:1fr} .tube-wrap{justify-content:center} .lvl .st{font-size:14px} }
+@media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- Vesícula seminal: saco lobulado com chapéu de cozinheiro -->
+    <symbol id="ch-ves" viewBox="0 0 100 100">
+      <path d="M34 88 L26 98" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+      <path fill="currentColor" d="M34 88 C20 86 16 72 24 64 C14 56 20 42 32 42 C30 32 40 24 50 28 C56 20 70 22 72 32 C84 30 90 42 84 50 C92 58 86 72 74 70 C74 80 64 86 56 82 C50 92 40 92 34 88 Z"/>
+      <g fill="#fff" stroke="#141C26" stroke-width="2">
+        <circle cx="42" cy="14" r="8"/><circle cx="60" cy="14" r="8"/><circle cx="51" cy="9" r="8"/>
+        <rect x="38" y="16" width="26" height="12" rx="2"/>
+      </g>
+      <circle cx="44" cy="56" r="6.5" fill="#fff"/><circle cx="62" cy="56" r="6.5" fill="#fff"/>
+      <circle cx="45.5" cy="57" r="3.2" fill="#141C26"/><circle cx="63.5" cy="57" r="3.2" fill="#141C26"/>
+      <path d="M46 68 q8 8 16 0" stroke="#141C26" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <circle cx="36" cy="66" r="4" fill="#fff" opacity=".35"/><circle cx="72" cy="66" r="4" fill="#fff" opacity=".35"/>
+    </symbol>
+    <!-- Próstata: noz atravessada pela uretra, com tesoura -->
+    <symbol id="ch-pro" viewBox="0 0 100 100">
+      <rect x="44" y="0" width="12" height="100" rx="6" fill="currentColor" opacity=".35"/>
+      <path fill="currentColor" d="M50 16 C74 16 90 32 88 54 C86 76 70 90 50 90 C30 90 14 76 12 54 C10 32 26 16 50 16 Z"/>
+      <g stroke="#fff" stroke-width="2.5" fill="none" opacity=".35" stroke-linecap="round">
+        <path d="M22 38 q6 -6 12 0"/><path d="M66 38 q6 -6 12 0"/><path d="M20 68 q6 5 12 0"/><path d="M50 22 v8"/>
+      </g>
+      <circle cx="38" cy="50" r="6.5" fill="#fff"/><circle cx="60" cy="50" r="6.5" fill="#fff"/>
+      <circle cx="39.5" cy="51" r="3.2" fill="#141C26"/><circle cx="61.5" cy="51" r="3.2" fill="#141C26"/>
+      <path d="M41 63 q8 8 16 0" stroke="#141C26" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <g transform="translate(72 66)" stroke="#141C26" stroke-width="2.5" stroke-linecap="round">
+        <line x1="4" y1="12" x2="20" y2="-6"/><line x1="12" y1="12" x2="-4" y2="-6"/>
+        <circle cx="3" cy="17" r="5" fill="#fff"/><circle cx="14" cy="17" r="5" fill="#fff"/>
+      </g>
+    </symbol>
+    <!-- Bulbouretrais: duas ervilhas com bolhas de limpeza -->
+    <symbol id="ch-cow" viewBox="0 0 100 100">
+      <path d="M32 72 Q40 90 50 96 M68 72 Q60 90 50 96" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <circle cx="30" cy="56" r="20" fill="currentColor"/><circle cx="70" cy="56" r="20" fill="currentColor"/>
+      <circle cx="24" cy="52" r="4.8" fill="#fff"/><circle cx="36" cy="52" r="4.8" fill="#fff"/>
+      <circle cx="25" cy="53" r="2.4" fill="#141C26"/><circle cx="37" cy="53" r="2.4" fill="#141C26"/>
+      <circle cx="64" cy="52" r="4.8" fill="#fff"/><circle cx="76" cy="52" r="4.8" fill="#fff"/>
+      <circle cx="65" cy="53" r="2.4" fill="#141C26"/><circle cx="77" cy="53" r="2.4" fill="#141C26"/>
+      <path d="M25 62 q5 5 10 0 M65 62 q5 5 10 0" stroke="#141C26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <g fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="50" cy="22" r="6"/><circle cx="62" cy="12" r="4"/><circle cx="40" cy="10" r="3"/>
+      </g>
+    </symbol>
+    <!-- Testículo: casa dos nadadores -->
+    <symbol id="ch-tes" viewBox="0 0 100 100">
+      <path d="M50 24 V4" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+      <ellipse cx="48" cy="58" rx="28" ry="34" fill="currentColor"/>
+      <path d="M72 30 C90 42 90 76 72 88" stroke="currentColor" stroke-width="10" fill="none" opacity=".55" stroke-linecap="round"/>
+      <circle cx="38" cy="54" r="6.5" fill="#fff"/><circle cx="58" cy="54" r="6.5" fill="#fff"/>
+      <circle cx="39.5" cy="55" r="3.2" fill="#141C26"/><circle cx="59.5" cy="55" r="3.2" fill="#141C26"/>
+      <path d="M41 67 q7 7 14 0" stroke="#141C26" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <!-- Bexiga: balão de água -->
+    <symbol id="ch-bex" viewBox="0 0 100 100">
+      <path fill="currentColor" d="M50 10 C78 10 90 32 88 52 C86 72 70 82 56 84 L54 96 L46 96 L44 84 C30 82 14 72 12 52 C10 32 22 10 50 10 Z"/>
+      <path d="M16 58 Q28 52 40 58 T64 58 T88 58" stroke="#fff" stroke-width="3" fill="none" opacity=".5"/>
+      <circle cx="38" cy="38" r="6" fill="#fff"/><circle cx="62" cy="38" r="6" fill="#fff"/>
+      <circle cx="39.5" cy="39" r="3" fill="#141C26"/><circle cx="63.5" cy="39" r="3" fill="#141C26"/>
+      <path d="M44 48 q6 5 12 0" stroke="#141C26" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="hud">
+  <div class="hud-in">
+    <button class="logo" id="logoBtn" aria-label="Voltar ao mapa"><svg viewBox="0 0 120 60" aria-hidden="true"><path d="M50 30 C 40 18, 32 42, 22 30 S 8 22, 4 30" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><ellipse cx="72" cy="30" rx="24" ry="18" fill="currentColor"/></svg>Fábrica do <span>Sêmen</span></button>
+    <span class="hud-pill" id="hudStars">⭐ 0 / 15</span>
+    <button class="hud-btn" id="soundBtn" aria-pressed="true">🔊 Som</button>
+    <button class="hud-btn" id="rankBtn">🏆 Ranking</button>
+    <button class="hud-btn" id="mapBtn">🗺️ Mapa</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- MAPA -->
+  <section class="screen on" id="s-map">
+    <div class="map-head">
+      <span class="eyebrow">Glândulas acessórias masculinas · jogo</span>
+      <h1>Fábrica do <span>Sêmen</span></h1>
+      <div class="talk"><div id="mapNado"></div><div class="bubble" id="mapMsg"></div></div>
+    </div>
+    <form class="namecard" id="nameForm">
+      <label for="nickInput"><b>Seu nome no ranking da turma</b><small>Ele aparece no placar e no seu diploma</small></label>
+      <div class="namerow"><input id="nickInput" maxlength="24" placeholder="Ex.: Ana B." autocomplete="off"><button class="btn" type="submit">Salvar</button></div>
+      <small id="nickMsg" aria-live="polite"></small>
+    </form>
+    <ol class="trail" id="trail"></ol>
+    <div class="map-foot">
+      <button class="linkish" id="unlockBtn">Professor(a): liberar todas as fases</button>
+      <button class="linkish" id="resetBtn">Zerar meu progresso</button>
+    </div>
+    <div class="feedback" id="resetConfirm" hidden>
+      <p style="margin-bottom:10px">Apagar todas as estrelas e começar do zero?</p>
+      <div class="actions"><button class="btn" id="resetYes">Sim, zerar</button><button class="btn alt" id="resetNo">Cancelar</button></div>
+    </div>
+    <details class="ficha">
+      <summary>Cola: mapa do corpo e ficha técnica</summary>
+      <div class="anat-box" id="fichaAnat" style="margin-top:12px"></div>
+      <div class="tbl"><table>
+        <thead><tr><th>Glândula</th><th>Apelido</th><th>Quantas</th><th>Parte do sêmen</th><th>O que faz</th></tr></thead>
+        <tbody>
+          <tr><td>Vesículas seminais</td><td>A cozinha</td><td>2</td><td>60–70%</td><td>Frutose (energia), prostaglandinas, semenogelina (gelatina); líquido alcalino</td></tr>
+          <tr><td>Próstata</td><td>A tesoura</td><td>1</td><td>20–30%</td><td>PSA (desmancha a gelatina), citrato, zinco (contra bactérias)</td></tr>
+          <tr><td>Bulbouretrais (Cowper)</td><td>A limpeza</td><td>2</td><td>Menos de 5%</td><td>Muco que lubrifica e neutraliza restos de urina na uretra</td></tr>
+          <tr><td>Testículos</td><td>Casa dos nadadores</td><td>2</td><td>2–5%</td><td>Espermatozoides (não são glândulas acessórias)</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Valores aproximados. Volume mínimo de 1,4 mL e pH ≥ 7,2 seguem o manual da OMS (2021). O pH do laboratório é um modelo simplificado.</p>
+    </details>
+  </section>
+
+  <!-- FASE 1: HISTÓRIA -->
+  <section class="screen" id="s-story">
+    <div class="lvl-head"><div><span class="eyebrow" id="stEyebrow">Fase 1 · A história</span><h2 id="stHead">Era uma vez uma fábrica…</h2></div></div>
+    <div class="card story" id="storyCard"></div>
+  </section>
+
+  <!-- FASE 2: CAMINHO -->
+  <section class="screen" id="s-path">
+    <div class="lvl-head"><div><span class="eyebrow">Fase 2 · Monte o caminho</span><h2>Coloque os ajudantes na ordem</h2>
+      <p>O Nado entra pelo escorregador e sai pela uretra. Toque nos ajudantes na ordem em que ele passa por eles.</p></div>
+      <span class="hud-pill" id="pathErr">Erros: 0</span></div>
+    <div class="card">
+      <div class="line" id="line"></div>
+      <div class="path-grid">
+        <div class="anat-box" id="pathAnat"></div>
+        <div style="display:grid;gap:14px;min-width:0">
+          <div class="speech" id="pathSpeech"></div>
+          <div class="tray" id="pathTray"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FASE 3: CHUVA -->
+  <section class="screen" id="s-catch">
+    <div class="lvl-head"><div><span class="eyebrow" id="cEyebrow">Fase 3 · Chuva de ingredientes</span><h2 id="cTitle">Pegue só o que é seu!</h2></div></div>
+    <div class="cbar">
+      <span class="hearts" id="cHearts" aria-label="Vidas"></span>
+      <div class="goal" id="cGoalWrap"><span id="cGoalTx">0 / 6</span><div class="meter"><i id="cGoal"></i></div></div>
+    </div>
+    <div class="arena" id="arena">
+      <div class="catcher" id="catcher"><div class="bowl" id="catchAva"></div><small id="catchName"></small></div>
+      <div class="overlay" id="cOverlay"></div>
+    </div>
+    <p class="ctl-hint">Arraste o dedo ou o mouse na área do jogo. No teclado, use as setas ← →.</p>
+  </section>
+
+  <!-- FASE 4: LABORATÓRIO -->
+  <section class="screen" id="s-lab">
+    <div class="lvl-head"><div><span class="eyebrow">Fase 4 · Laboratório</span><h2>Acerte a receita do sêmen</h2>
+      <p>Arraste as barrinhas e veja o tubo encher. Missão: deixar os 6 medidores verdes. Dica: a cozinha é quem mais coloca!</p></div></div>
+    <div class="card">
+      <div class="mission"><span id="labCount">0 de 6 medidores verdes</span><div class="bar"><i id="labBar"></i></div></div>
+      <div class="lab">
+        <div class="dials" id="dials"></div>
+        <div class="bench">
+          <div class="tube-wrap">
+            <div class="scale" aria-hidden="true"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6 mL</span></div>
+            <div class="tube" id="tube" role="img" aria-label="Tubo de ensaio"></div>
+          </div>
+          <div class="readouts" id="readouts"></div>
+        </div>
+      </div>
+      <div class="actions"><button class="btn alt" id="hintBtn">💡 Me mostra a receita (vale 1 estrela)</button></div>
+    </div>
+  </section>
+
+  <!-- FASE 5: DETETIVE -->
+  <section class="screen" id="s-detective">
+    <div class="lvl-head"><div><span class="eyebrow" id="dEyebrow">Fase 5 · Missão detetive</span><h2>Qual ajudante faltou ao trabalho?</h2>
+      <p>Olhe os medidores vermelhos da amostra misteriosa e descubra quem não apareceu.</p></div>
+      <span class="hud-pill" id="dCount">Caso 1 de 3</span></div>
+    <div class="card" id="dCard"></div>
+  </section>
+
+  <!-- RANKING -->
+  <section class="screen" id="s-rank">
+    <div class="lvl-head"><div><span class="eyebrow">Placar ao vivo</span><h2>Ranking da turma 🏆</h2>
+      <p id="rankStatus">Conectando ao placar…</p></div>
+      <span class="hud-pill" id="rankLive">0 jogando agora</span></div>
+    <ol class="rank" id="rankList"></ol>
+    <div class="feedback" id="rankEmpty" hidden>Ninguém no ranking ainda. Cada aluno escreve o nome no mapa e começa a jogar. As estrelas aparecem aqui sozinhas.</div>
+    <div class="actions" id="rankOwner" hidden>
+      <button class="linkish" id="rankReset">Professor(a): zerar o ranking salvo</button>
+    </div>
+    <div class="feedback" id="rankResetConfirm" hidden>
+      <p style="margin-bottom:10px">Apagar todas as pontuações salvas da turma? Quem estiver jogando agora continua aparecendo.</p>
+      <div class="actions"><button class="btn" id="rankResetYes">Sim, zerar</button><button class="btn alt" id="rankResetNo">Cancelar</button></div>
+    </div>
+  </section>
+
+  <!-- DIPLOMA -->
+  <section class="screen" id="s-end">
+    <div class="diploma">
+      <div id="endNado"></div>
+      <span class="eyebrow">Diploma oficial da fábrica</span>
+      <h2>Mestre da Fábrica do Sêmen</h2>
+      <p>Certificamos que</p>
+      <div class="who" id="dipName">Seu nome aqui</div>
+      <p style="max-width:52ch">conhece a cozinha (vesículas seminais), a tesoura (próstata) e a equipe de limpeza (bulbouretrais), e sabe montar a receita do sêmen.</p>
+      <div class="bigstars" id="dipStars" style="font-size:34px"></div>
+      <label for="nameInput" class="eyebrow">Escreva seu nome</label>
+      <input id="nameInput" maxlength="40" placeholder="Seu nome">
+      <div class="actions" style="justify-content:center"><button class="btn" id="endMap">Voltar ao mapa</button></div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="modal" hidden></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<script>
+(function(){
+const $ = id=>document.getElementById(id);
+const shuffle = a=>{ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function nado(cls){ return '<svg class="nado '+(cls||'')+'" viewBox="0 0 120 60" aria-hidden="true"><path class="tail" d="M50 30 C 40 18, 32 42, 22 30 S 8 22, 4 30" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><ellipse cx="72" cy="30" rx="24" ry="18" fill="currentColor"/><circle cx="80" cy="25" r="5.5" fill="#fff"/><circle cx="81.8" cy="25.5" r="2.7" fill="#141C26"/><path d="M75 36 q7 6 14 0" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>'; }
+
+const CHC={ves:'var(--ves)',pro:'var(--pro)',cow:'var(--cow)',tes:'var(--spz)',bex:'var(--muted)'};
+function ch(k){ return '<svg class="ch" viewBox="0 0 100 100" style="color:'+CHC[k]+'" aria-hidden="true"><use href="#ch-'+k+'"/></svg>'; }
+const VAS='M148 300 C100 272 92 200 98 150 C102 104 128 86 146 98 C160 108 168 138 190 162';
+function anatomy(cls, swim){
+  const mover=(path,begin)=>'<g class="mover"><path d="M-6 0 q-5 -4 -10 0 t-10 0"/><ellipse rx="6.5" ry="4.5"/><animateMotion dur="5s" begin="'+begin+'" repeatCount="indefinite" rotate="auto" path="'+path+'"/></g>';
+  const pL='M148 300 C100 272 92 200 98 150 C102 104 128 86 146 98 C160 108 168 138 190 162 L210 176 L210 370';
+  const pR='M272 300 C320 272 328 200 322 150 C318 104 292 86 274 98 C260 108 252 138 230 162 L210 176 L210 370';
+  return '<svg class="anat '+(cls||'')+'" viewBox="0 0 420 384" role="img" aria-label="Mapa do corpo: bexiga, vesículas seminais, próstata, glândulas bulbouretrais, ducto deferente, testículos e uretra">'+
+  '<g class="part def"><path class="duct" d="'+VAS+'"/><path class="duct" transform="matrix(-1 0 0 1 420 0)" d="'+VAS+'"/><line class="ld" x1="70" y1="72" x2="108" y2="100"/><text class="lbl" x="6" y="62">Ducto</text><text class="lbl" x="6" y="78">deferente</text></g>'+
+  '<g class="part bex"><path class="body" d="M210 28 C262 28 282 62 278 92 C274 120 246 136 224 140 L196 140 C174 136 146 120 142 92 C138 62 158 28 210 28 Z"/><line class="ld" x1="262" y1="50" x2="352" y2="42"/><text class="lbl" x="414" y="46" text-anchor="end">Bexiga</text></g>'+
+  '<g class="part ves"><circle cx="180" cy="154" r="10"/><circle cx="166" cy="146" r="12"/><circle cx="151" cy="140" r="12"/><circle cx="137" cy="134" r="10"/>'+
+     '<circle cx="240" cy="154" r="10"/><circle cx="254" cy="146" r="12"/><circle cx="269" cy="140" r="12"/><circle cx="283" cy="134" r="10"/>'+
+     '<line class="ld" x1="64" y1="146" x2="126" y2="136"/><text class="lbl" x="6" y="140">Vesícula</text><text class="lbl" x="6" y="156">seminal</text></g>'+
+  '<g class="part ure"><rect class="peni" x="194" y="226" width="32" height="148" rx="16"/><path class="tube" d="M210 140 L210 368"/><line class="ld" x1="216" y1="364" x2="358" y2="374"/><text class="lbl" x="414" y="378" text-anchor="end">Uretra</text></g>'+
+  '<g class="part pro"><ellipse cx="210" cy="168" rx="34" ry="25"/><path d="M210 143 L210 193" stroke="rgba(255,255,255,.55)" stroke-width="6" stroke-linecap="round"/><line class="ld" x1="246" y1="168" x2="354" y2="166"/><text class="lbl" x="414" y="171" text-anchor="end">Próstata</text></g>'+
+  '<g class="part cow"><path class="dd" d="M190 219 Q194 234 207 240 M230 219 Q226 234 213 240"/><circle cx="190" cy="212" r="7.5"/><circle cx="230" cy="212" r="7.5"/><line class="ld" x1="88" y1="212" x2="180" y2="212"/><text class="lbl" x="6" y="217">Bulbouretral</text></g>'+
+  '<g class="part tes"><path class="epi" d="M134 306 C124 320 126 338 140 348"/><path class="epi" d="M286 306 C296 320 294 338 280 348"/><ellipse cx="150" cy="324" rx="20" ry="27"/><ellipse cx="270" cy="324" rx="20" ry="27"/><line class="ld" x1="70" y1="330" x2="124" y2="326"/><text class="lbl" x="6" y="335">Testículo</text></g>'+
+  (swim && !reduce ? mover(pL,'0s')+mover(pR,'1.7s')+mover(pL,'3.3s') : '')+
+  '</svg>';
+}
+
+/* ---------- Dados ---------- */
+const GL = {
+  ves:{name:'Vesículas seminais', nick:'a cozinha', c:'var(--ves)', ing:['frutose','prostaglandinas','semenogelina']},
+  pro:{name:'Próstata', nick:'a tesoura', c:'var(--pro)', ing:['psa','citrato','zinco']},
+  cow:{name:'Bulbouretrais', nick:'a limpeza', c:'var(--cow)', ing:['muco','limpeza']}
+};
+const ORDER = ['ves','pro','cow'];
+const ING = {
+  frutose:{n:'Frutose', s:'o lanche!', home:'ves'},
+  prostaglandinas:{n:'Prostaglandinas', s:'empurrãozinho!', home:'ves'},
+  semenogelina:{n:'Semenogelina', s:'a gelatina!', home:'ves'},
+  psa:{n:'PSA', s:'a tesoura!', home:'pro'},
+  citrato:{n:'Citrato', s:'equilíbrio!', home:'pro'},
+  zinco:{n:'Zinco', s:'escudo!', home:'pro'},
+  muco:{n:'Muco lubrificante', s:'escorrega!', home:'cow'},
+  limpeza:{n:'Muco de limpeza', s:'tchau, xixi!', home:'cow'},
+  testosterona:{n:'Testosterona', bad:'Testosterona vai pro sangue!'},
+  glicose:{n:'Glicose', bad:'Não! O açúcar é frutose.'},
+  lactose:{n:'Lactose', bad:'Lactose é do leite!'},
+  hemoglobina:{n:'Hemoglobina', bad:'Hemoglobina é do sangue!'}
+};
+const LEVELS = [
+  {id:1, key:'story', name:'A história', sub:'Conheça a turma da fábrica', e:'📖', c:'var(--spz)'},
+  {id:2, key:'path', name:'Monte o caminho', sub:'Coloque os ajudantes na ordem', e:'🛠️', c:'var(--pro)'},
+  {id:3, key:'catch', name:'Chuva de ingredientes', sub:'Pegue só o que é seu', e:'🌧️', c:'var(--cow)'},
+  {id:4, key:'lab', name:'Laboratório', sub:'Acerte a receita', e:'🧪', c:'var(--ves)'},
+  {id:5, key:'detective', name:'Missão detetive', sub:'Quem faltou ao trabalho?', e:'🔍', c:'var(--alarm)'}
+];
+
+/* ---------- Progresso ---------- */
+let P = {stars:{}, unlockAll:false, name:''};
+try{ const s=JSON.parse(localStorage.getItem('fs-game')||'null'); if(s&&s.stars) P=Object.assign(P,s); }catch(e){}
+const save = ()=>{ try{ localStorage.setItem('fs-game', JSON.stringify(P)); }catch(e){} };
+const totalStars = ()=>Object.values(P.stars).reduce((a,b)=>a+b,0);
+const unlocked = id=> P.unlockAll || id===1 || (P.stars[id-1]||0)>0;
+function hud(){ $('hudStars').textContent='⭐ '+totalStars()+' / 15'; }
+
+/* ---------- Som ---------- */
+let soundOn=true, actx=null;
+function tone(f,t0,dur,type,vol){
+  if(!soundOn) return;
+  try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(), g=actx.createGain(); o.type=type||'sine'; o.frequency.value=f;
+    const s=actx.currentTime+t0; g.gain.setValueAtTime(.0001,s); g.gain.exponentialRampToValueAtTime(vol||.14,s+.02); g.gain.exponentialRampToValueAtTime(.0001,s+dur);
+    o.connect(g).connect(actx.destination); o.start(s); o.stop(s+dur+.05); }catch(e){}
+}
+const sBad=()=>{ tone(300,0,.16,'square',.1); tone(220,.15,.22,'square',.1); };
+const sOk=()=>{ tone(660,0,.12); tone(990,.09,.16); };
+const sPop=()=>{ tone(880,0,.08,'triangle'); };
+const sWin=()=>{ [523,659,784,1046,1318].forEach((f,i)=>tone(f,i*.11,.28,'triangle')); };
+const sClick=()=>tone(520,0,.05,'triangle',.06);
+$('soundBtn').addEventListener('click',()=>{ soundOn=!soundOn; $('soundBtn').setAttribute('aria-pressed',soundOn); $('soundBtn').textContent=soundOn?'🔊 Som':'🔇 Mudo'; });
+
+/* ---------- Telas ---------- */
+let current='map';
+function go(key){
+  stopCatch();
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id==='s-'+key));
+  current=key; window.scrollTo({top:0,behavior:reduce?'auto':'smooth'});
+  if(key==='map') renderMap();
+  if(key==='rank') renderRank();
+  pushPresence();
+}
+$('rankBtn').addEventListener('click',()=>go('rank'));
+$('logoBtn').addEventListener('click',()=>go('map'));
+$('mapBtn').addEventListener('click',()=>go('map'));
+
+function renderMap(){
+  hud();
+  $('mapNado').innerHTML=nado('bob');
+  const next = LEVELS.find(l=>!(P.stars[l.id]>0));
+  const msg=$('mapMsg');
+  msg.innerHTML = !next ? '<b>Você zerou o jogo!</b> Pegue seu diploma ou tente conseguir todas as 15 estrelas.'
+    : next.id===1 ? '<b>Oi! Eu sou o Nado, um espermatozoide.</b> Vou te mostrar a fábrica onde eu ganho meu lanche e minha proteção. Toque na fase 1!'
+    : '<b>Mandou bem!</b> Agora é a fase '+next.id+': '+next.name+'.';
+  const tr=$('trail'); tr.innerHTML='';
+  LEVELS.forEach(l=>{
+    const li=document.createElement('li'); const b=document.createElement('button');
+    const st=P.stars[l.id]||0, open=unlocked(l.id);
+    b.className='lvl'+(open?'':' locked')+(next&&next.id===l.id&&open?' next':''); b.style.setProperty('--c',l.c);
+    b.innerHTML='<span class="ic">'+(open?l.e:'🔒')+'</span><span class="tx"><small>Fase '+l.id+'</small><b></b><span></span></span><span class="st">'+starStr(st)+'</span>';
+    b.querySelector('b').textContent=l.name; b.querySelector('.tx span').textContent=l.sub;
+    b.addEventListener('click',()=>{ if(!open){ sBad(); b.animate([{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'none'}],{duration:300}); msg.innerHTML='<b>Calma!</b> Termine a fase '+(l.id-1)+' primeiro para liberar esta.'; return; } sClick(); startLevel(l.id); });
+    li.append(b); tr.append(li);
+  });
+  if(!next){ const li=document.createElement('li'); const b=document.createElement('button'); b.className='lvl next'; b.style.setProperty('--c','var(--gold)');
+    b.innerHTML='<span class="ic">🎓</span><span class="tx"><small>Final</small><b>Seu diploma</b><span>Você completou a fábrica</span></span>'; b.addEventListener('click',showEnd); li.append(b); tr.append(li); }
+}
+const starStr = n=>[1,2,3].map(i=>'<span class="'+(i<=n?'star-on':'star-off')+'">★</span>').join('');
+$('unlockBtn').addEventListener('click',()=>{ P.unlockAll=true; save(); renderMap(); });
+$('resetBtn').addEventListener('click',()=>{ $('resetConfirm').hidden=false; });
+$('resetNo').addEventListener('click',()=>{ $('resetConfirm').hidden=true; });
+$('resetYes').addEventListener('click',()=>{ P={stars:{},unlockAll:false,name:''}; save(); $('resetConfirm').hidden=true; renderMap(); });
+
+function startLevel(id){ ({1:startStory,2:startPath,3:startCatch,4:startLab,5:startDetective})[id](); }
+
+/* ---------- Vitória + confete ---------- */
+function win(id, stars, msg){
+  P.stars[id]=Math.max(P.stars[id]||0, stars); save(); hud(); syncRank();
+  sWin(); confetti();
+  const m=$('modal'); m.hidden=false;
+  m.innerHTML='<div class="ov-card" role="dialog" aria-modal="true" aria-labelledby="winT"><div class="bigstars">'+[1,2,3].map(i=>'<span class="'+(i<=stars?'star-on':'star-off')+'">★</span>').join('')+'</div><h3 id="winT"></h3><p></p><div class="actions" style="justify-content:center"><button class="btn big" id="winNext"></button><button class="btn alt" id="winMap">Mapa</button></div></div>';
+  m.querySelector('h3').textContent = stars===3?'Perfeito!':stars===2?'Muito bem!':'Fase concluída!';
+  m.querySelector('p').textContent = msg;
+  const nb=$('winNext'); nb.textContent = id<5?'Próxima fase →':'Pegar meu diploma 🎓';
+  nb.addEventListener('click',()=>{ m.hidden=true; id<5?startLevel(id+1):showEnd(); });
+  $('winMap').addEventListener('click',()=>{ m.hidden=true; go('map'); });
+  nb.focus();
+}
+function confetti(){
+  if(reduce) return;
+  const cv=$('confetti'), ctx=cv.getContext('2d'); const dpr=window.devicePixelRatio||1;
+  cv.width=innerWidth*dpr; cv.height=innerHeight*dpr; ctx.scale(dpr,dpr);
+  const cs=getComputedStyle(document.documentElement);
+  const cols=['--ves','--pro','--cow','--spz','--gold','--ok'].map(v=>cs.getPropertyValue(v).trim());
+  const parts=Array.from({length:140},()=>({x:innerWidth/2+(Math.random()-.5)*120,y:innerHeight*.35,vx:(Math.random()-.5)*14,vy:-Math.random()*14-4,r:Math.random()*6+4,c:cols[Math.floor(Math.random()*cols.length)],a:Math.random()*6,va:(Math.random()-.5)*.4}));
+  let t0=performance.now();
+  (function f(t){ const el=t-t0; ctx.clearRect(0,0,innerWidth,innerHeight);
+    parts.forEach(p=>{ p.vy+=.35; p.x+=p.vx; p.y+=p.vy; p.vx*=.99; p.a+=p.va; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.fillStyle=p.c; ctx.fillRect(-p.r/2,-p.r/4,p.r,p.r/2); ctx.restore(); });
+    if(el<2600) requestAnimationFrame(f); else ctx.clearRect(0,0,innerWidth,innerHeight);
+  })(t0);
+}
+
+/* ---------- FASE 1: História + quiz ---------- */
+const SLIDES = [
+  {art:'nado', t:'Oi! Eu sou o Nado', p:'Sou um espermatozoide: uma célula tão pequenininha que só dá para ver no microscópio. Tenho um rabinho e adoro nadar!'},
+  {art:'tes', t:'Nasci nos testículos', p:'Junto com milhões de irmãos! Mas sozinhos a gente não consegue viajar. Precisamos de lanche, de proteção e de um caminho limpinho.'},
+  {art:'body', t:'Onde fica a fábrica?', p:'Na parte de baixo da barriga, pertinho da bexiga. Cada cor deste mapa é um personagem. Os coloridos são os ajudantes que você vai conhecer agora.'},
+  {art:'ves', t:'A cozinha: vesículas seminais', p:'São duas, uma de cada lado, atrás da bexiga. Fazem o nosso lanche, a frutose (o açúcar das frutas), e uma gelatina que segura todo mundo junto. Fazem a maior parte do sêmen!'},
+  {art:'pro', t:'A tesoura: próstata', p:'É uma só, do tamanho de uma noz, logo abaixo da bexiga. Repare que o tubo da uretra passa por dentro dela! Ela solta o PSA, que corta a gelatina, e o zinco, um escudo contra bactérias.'},
+  {art:'cow', t:'A limpeza: bulbouretrais', p:'São duas, do tamanho de uma ervilha, logo abaixo da próstata. Passam antes de todo mundo, limpando o restinho de xixi e deixando o caminho escorregadio.'},
+  {art:'trip', t:'A minha viagem', p:'Olha eu nadando! Saio do testículo, subo pelo escorregador (ducto deferente), passo atrás da bexiga, pego lanche na cozinha, atravesso a tesoura e saio pela uretra.'},
+  {art:'recipe', t:'A receita do sêmen', p:'Se o sêmen fosse um copo com 100 colheres, ficaria assim. Repare: nós, os nadadores, somos só um pouquinho!'},
+  {art:'why', t:'Por que "acessórias"?', p:'Pelo mesmo motivo que mochila e boné são acessórios: elas não são as estrelas, mas ajudam muito. Agora vamos ver se você aprendeu!'}
+];
+/* Banco de perguntas: a primeira opção é sempre a certa (embaralhada na tela). A cada partida saem 5. */
+const QUIZ_N = 5;
+const BANK = [
+  {q:'Quem faz o lanche de frutose?', o:['A cozinha (vesículas seminais)','A tesoura (próstata)','A limpeza (bulbouretrais)','A bexiga'], ok:'Isso! A frutose das vesículas é o combustível do Nado.', hint:'Pense em quem cozinha!'},
+  {q:'O que o PSA da próstata faz?', o:['Corta a gelatina','Dá energia','Limpa o xixi','Fabrica nadadores'], ok:'Exato! O PSA desmancha a gelatina em 15 a 30 minutos.', hint:'Lembra do apelido da próstata?'},
+  {q:'Quem passa primeiro para limpar o caminho?', o:['As bulbouretrais','A próstata','As vesículas seminais','Os nadadores'], ok:'Certo! As bulbouretrais limpam e lubrificam antes de tudo.', hint:'Quem é a equipe de limpeza?'},
+  {q:'Quem faz a MAIOR parte do sêmen?', o:['As vesículas seminais','Os nadadores','A próstata','As bulbouretrais'], ok:'Isso! Cerca de 65 de cada 100 colheres vêm da cozinha.', hint:'Olhe de novo a receita das 100 colheres.'},
+  {q:'Onde nascem os espermatozoides?', o:['Nos testículos','Na próstata','Na bexiga','Nas vesículas seminais'], ok:'Isso! Os testículos são a casa dos nadadores.', hint:'Onde o Nado disse que nasceu?'},
+  {q:'Quantas próstatas o homem tem?', o:['Uma','Duas','Três','Quatro'], ok:'Certo! É uma só, bem no meio, abaixo da bexiga.', hint:'Olhe o mapa do corpo: ela fica no meio.'},
+  {q:'A próstata tem mais ou menos o tamanho de…', o:['Uma noz','Uma melancia','Um grão de areia','Uma laranja grande'], ok:'Isso! Do tamanho de uma noz.', hint:'É pequena, mas dá para segurar na mão.'},
+  {q:'Quantas vesículas seminais existem?', o:['Duas','Uma','Quatro','Nenhuma'], ok:'Certo! Uma de cada lado, atrás da bexiga.', hint:'No mapa, tem uma de cada lado.'},
+  {q:'As bulbouretrais têm o tamanho de…', o:['Uma ervilha','Uma noz','Uma bola de tênis','Uma uva-passa gigante'], ok:'Isso! São pequenininhas, do tamanho de uma ervilha.', hint:'São as menores da turma.'},
+  {q:'Qual tubo leva os nadadores do testículo para dentro do corpo?', o:['Ducto deferente','Uretra','Bexiga','Próstata'], ok:'Isso! É o "escorregador" da história.', hint:'O Nado chamou de escorregador.'},
+  {q:'Qual açúcar existe no sêmen?', o:['Frutose','Glicose','Lactose','Sacarose'], ok:'Certo! Frutose, o mesmo tipo de açúcar das frutas.', hint:'É o açúcar das frutas.'},
+  {q:'A uretra passa por DENTRO de qual glândula?', o:['Próstata','Vesícula seminal','Bulbouretral','Testículo'], ok:'Isso! A próstata abraça a uretra.', hint:'É a glândula do tamanho de uma noz.'},
+  {q:'Para que serve o zinco da próstata?', o:['É um escudo contra bactérias','Dá cor ao sêmen','Faz a gelatina','Guarda o xixi'], ok:'Isso! O zinco ajuda a proteger contra bactérias.', hint:'Pense em proteção.'},
+  {q:'Quanto do sêmen é feito de espermatozoides?', o:['Só um pouquinho (2 a 5%)','Metade','Quase tudo','Nada'], ok:'Certo! Eles são poucos em volume, mas são os mais importantes.', hint:'Lembra da receita das 100 colheres?'},
+  {q:'Por que a bexiga "fecha a porta" na hora da saída do sêmen?', o:['Para xixi e sêmen não se misturarem','Para guardar a frutose','Para fazer PSA','Para fabricar nadadores'], ok:'Isso! Assim xixi e sêmen não se misturam.', hint:'A bexiga guarda o xixi…'},
+  {q:'O que a gelatina das vesículas faz no começo?', o:['Segura todo mundo junto','Dá energia','Limpa a uretra','Espanta bactérias'], ok:'Certo! Depois a tesoura (PSA) desmancha essa gelatina.', hint:'Gelatina deixa as coisas grudadas…'},
+  {q:'Por que elas se chamam glândulas "acessórias"?', o:['Porque ajudam os espermatozoides, como acessórios','Porque ficam fora do corpo','Porque são enfeites','Porque mudam de cor'], ok:'Isso! Como mochila e boné: não são as estrelas, mas ajudam muito.', hint:'Lembra da mochila e do boné?'},
+  {q:'O PSA também aparece em qual exame?', o:['Exame de sangue para cuidar da próstata','Raio-x do pé','Exame de vista','Teste de audição'], ok:'Certo! Os médicos usam o PSA para cuidar da saúde da próstata.', hint:'É um exame que pede uma picadinha.'}
+];
+let ST={i:0, mode:'slides', errs:0, qs:[]};
+function startStory(){ ST={i:0,mode:'slides',errs:0,qs:shuffle(BANK).slice(0,QUIZ_N)}; go('story'); renderStory(); }
+function artHTML(a){
+  if(a==='nado') return nado('huge bob');
+  if(a==='swarm') return '<div class="swarm">'+Array.from({length:12},()=>nado('bob')).join('')+'</div>';
+  if(a==='tes') return '<div class="duo"><div class="hero-char" style="--c:var(--spz)"><div class="ava bob">'+ch('tes')+'</div><span class="role">a casa dos nadadores</span></div><div class="swarm">'+Array.from({length:8},()=>nado('bob')).join('')+'</div></div>';
+  if(a==='body') return '<div class="anat-box">'+anatomy('')+'</div>';
+  if(GL[a]) return '<div class="duo"><div class="hero-char" style="--c:'+GL[a].c+'"><div class="ava bob">'+ch(a)+'</div><span class="role">'+GL[a].nick+'</span></div><div class="anat-box">'+anatomy('dim focus on-'+a)+'<small>Aqui no corpo</small></div></div>';
+  if(a==='trip') return '<div class="anat-box">'+anatomy('',true)+'<ol class="trip">'+[['Testículo','var(--spz)'],['Ducto deferente','var(--muted)'],['Vesículas','var(--ves)'],['Próstata','var(--pro)'],['Uretra','var(--cow)']].map((s,i,arr)=>'<li style="--c:'+s[1]+';animation-delay:'+(i*.15)+'s">'+s[0]+'</li>'+(i<arr.length-1?'<li class="arrow" aria-hidden="true">→</li>':'')).join('')+'</ol></div>';
+  if(a==='recipe') return '<div style="display:grid;gap:10px;justify-items:center;width:100%"><div class="recipe"><i style="width:65%;background:var(--ves)">65</i><i style="width:25%;background:var(--pro)">25</i><i style="width:5%;background:var(--cow)"></i><i style="width:5%;background:var(--spz)"></i></div><div class="legend"><span style="--c:var(--ves)">Cozinha 65</span><span style="--c:var(--pro)">Tesoura 25</span><span style="--c:var(--cow)">Limpeza até 5</span><span style="--c:var(--spz)">Nadadores até 5</span></div></div>';
+  if(a==='why') return '<div style="font-size:80px" class="bob">🎒🧢</div>';
+  return '';
+}
+function renderStory(){
+  const c=$('storyCard');
+  if(ST.mode==='slides'){
+    const s=SLIDES[ST.i];
+    $('stEyebrow').textContent='Fase 1 · A história · '+(ST.i+1)+' de '+SLIDES.length;
+    $('stHead').textContent='Era uma vez uma fábrica…';
+    c.innerHTML='<div class="art">'+artHTML(s.art)+'</div><div class="slide-text"><h3></h3><p></p></div><div class="dots">'+SLIDES.map((_,i)=>'<i class="'+(i===ST.i?'on':'')+'"></i>').join('')+'</div><div class="nav"><button class="btn alt" id="stBack">← Voltar</button><button class="btn big" id="stNext"></button></div>';
+    c.querySelector('h3').textContent=s.t; c.querySelector('.slide-text p').textContent=s.p;
+    $('stBack').disabled=ST.i===0;
+    $('stNext').textContent= ST.i===SLIDES.length-1?'Começar o quiz! 🎯':'Próximo →';
+    $('stBack').addEventListener('click',()=>{ ST.i--; sClick(); renderStory(); });
+    $('stNext').addEventListener('click',()=>{ sClick(); if(ST.i<SLIDES.length-1) ST.i++; else { ST.mode='quiz'; ST.i=0; } renderStory(); });
+    c.animate&&!reduce&&c.animate([{opacity:0,transform:'translateX(20px)'},{opacity:1,transform:'none'}],{duration:300,easing:'ease-out'});
+  } else {
+    const q=ST.qs[ST.i];
+    $('stEyebrow').textContent='Fase 1 · Quiz relâmpago · pergunta '+(ST.i+1)+' de '+ST.qs.length;
+    $('stHead').textContent='Será que você lembra?';
+    c.innerHTML='<div class="talk">'+nado('bob')+'<div class="bubble"><b></b></div></div><div class="opts"></div><div class="feedback" hidden></div><div class="nav"><span></span><button class="btn big" id="qNext" hidden>Continuar →</button></div>';
+    c.querySelector('.bubble b').textContent=q.q;
+    const opts=c.querySelector('.opts'), fb=c.querySelector('.feedback'); let done=false;
+    shuffle(q.o).forEach(label=>{
+      const b=document.createElement('button'); b.className='opt'; b.textContent=label;
+      b.addEventListener('click',()=>{
+        if(done) return;
+        if(label===q.o[0]){ done=true; b.classList.add('right'); fb.hidden=false; fb.className='feedback ok'; fb.textContent='✅ '+q.ok; sOk(); $('qNext').hidden=false; $('qNext').focus(); }
+        else { ST.errs++; b.classList.remove('wrong'); void b.offsetWidth; b.classList.add('wrong'); fb.hidden=false; fb.className='feedback err'; fb.textContent='❌ Quase! '+q.hint; sBad(); }
+      });
+      opts.append(b);
+    });
+    $('qNext').addEventListener('click',()=>{ if(ST.i<ST.qs.length-1){ ST.i++; renderStory(); } else win(1, ST.errs===0?3:ST.errs===1?2:1, 'Você conheceu a turma da fábrica e acertou o quiz com '+ST.errs+' erro(s). Jogue de novo: as perguntas mudam a cada partida!'); });
+  }
+}
+
+/* ---------- FASE 2: Caminho ---------- */
+let PT;
+function startPath(){ PT={placed:[], errs:0, tray:shuffle([...ORDER,'bex'])}; go('path'); renderPath(); say('','<b>Vamos lá!</b> Eu entro pelo escorregador. Qual ajudante eu encontro primeiro?'); }
+function say(kind, html){ const s=$('pathSpeech'); s.className='speech'+(kind?' '+kind:''); s.innerHTML=nado('bob')+'<div class="bubble">'+html+'</div>'; }
+function renderPath(){
+  $('pathErr').textContent='Erros: '+PT.errs;
+  const line=$('line'); line.innerHTML='';
+  const node=(t,s)=>{ const d=document.createElement('div'); d.className='node'; d.innerHTML='<b></b><small></small>'; d.querySelector('b').textContent=t; d.querySelector('small').textContent=s; return d; };
+  const pipe=(lit,c)=>{ const p=document.createElement('div'); p.className='pipe'+(lit?' lit':''); if(c) p.style.setProperty('--c',c); return p; };
+  line.append(node('Escorregador','ducto deferente'));
+  line.append(pipe(PT.placed.length>0,'var(--spz)'));
+  $('pathAnat').innerHTML=anatomy('dim on-def on-tes on-ure on-bex '+PT.placed.map(k=>'on-'+k).join(' '))+'<small>As glândulas aparecem no mapa quando você acerta</small>';
+  ORDER.forEach((k,i)=>{
+    const g=PT.placed[i]?GL[PT.placed[i]]:null;
+    const st=document.createElement('div'); st.className='station'+(g?' filled':' empty')+(!g&&i===PT.placed.length?' active':''); st.id='slot'+i;
+    if(g) st.style.setProperty('--c',g.c);
+    st.innerHTML='<span class="ava">'+(g?ch(PT.placed[i]):'?')+'</span><small>Estação '+(i+1)+'</small><span class="name"></span>';
+    st.querySelector('.name').textContent=g?g.name:(i===PT.placed.length?'Coloque aqui':'Vazia');
+    line.append(st); line.append(pipe(PT.placed.length>i+1||(PT.placed.length===3), g?g.c:null));
+  });
+  line.append(node('Uretra','saída'));
+  const tray=$('pathTray'); tray.innerHTML='';
+  PT.tray.filter(k=>!PT.placed.includes(k)).forEach(k=>{
+    const b=document.createElement('button'); b.className='chip'; b.id='chip-'+k;
+    const g=k==='bex'?{name:'Bexiga',nick:'a caixa d\'água do xixi'}:GL[k];
+    b.innerHTML='<span class="ava">'+ch(k)+'</span><span><b></b><small></small></span>';
+    b.querySelector('b').textContent=g.name; b.querySelector('small').textContent=g.nick;
+    b.addEventListener('click',()=>pickPath(k,b));
+    tray.append(b);
+  });
+}
+function pickPath(k,btn){
+  const exp=ORDER[PT.placed.length];
+  if(k!==exp){
+    PT.errs++; sBad(); btn.classList.remove('wrong'); void btn.offsetWidth; btn.classList.add('wrong'); $('pathErr').textContent='Erros: '+PT.errs;
+    if(k==='bex') say('err','<b>Ops!</b> A bexiga guarda o xixi e não faz parte da fábrica. Na hora da saída do sêmen, ela fecha a porta.');
+    else if(exp==='ves') say('err','<b>Ainda não!</b> Primeiro eu preciso do meu lanche. Quem cozinha?');
+    else say('err','<b>Quase!</b> A limpeza fica lá embaixo, perto da saída. Antes, eu passo por dentro de uma glândula do tamanho de uma noz.');
+    return;
+  }
+  sOk();
+  const target=$('slot'+PT.placed.length);
+  fly(btn, target, ()=>{
+    PT.placed.push(k); renderPath();
+    if(PT.placed.length===1) say('ok','<b>Acertou!</b> Hmm, lanche de frutose! E agora, quem vem?');
+    else if(PT.placed.length===2) say('ok','<b>Isso!</b> A tesoura vai soltar a gelatina. Falta um!');
+    else { say('ok','<b>Caminho pronto!</b> Olha só a gente nadando!'); swim(); }
+  });
+}
+function fly(from,to,done){
+  if(reduce||!from.animate){ done(); return; }
+  const a=from.getBoundingClientRect(), b=to.getBoundingClientRect();
+  const f=from.cloneNode(true); f.classList.add('flyer'); Object.assign(f.style,{left:a.left+'px',top:a.top+'px',width:a.width+'px'});
+  document.body.append(f); from.style.visibility='hidden';
+  const dx=b.left+b.width/2-(a.left+a.width/2), dy=b.top+b.height/2-(a.top+a.height/2);
+  f.animate([{transform:'none'},{transform:'translate('+dx*.5+'px,'+(dy*.5-60)+'px) scale(.9) rotate(-8deg)',offset:.5},{transform:'translate('+dx+'px,'+dy+'px) scale(.5)',opacity:.3}],{duration:550,easing:'cubic-bezier(.4,0,.2,1)'}).onfinish=()=>{ f.remove(); done(); };
+}
+function swim(){
+  const line=$('line'); const vertical=getComputedStyle(line).flexDirection==='column';
+  const W=line.clientWidth, H=line.clientHeight; let n=0;
+  const spawn=()=>{
+    const s=document.createElement('div'); s.className='swimmer'; s.innerHTML=nado(); line.append(s);
+    const off=(Math.random()-.5)*40;
+    const kf = vertical ? [{transform:'translate('+(W/2-23+off)+'px,-20px) rotate(90deg)'},{transform:'translate('+(W/2-23+off)+'px,'+H+'px) rotate(90deg)'}]
+                        : [{transform:'translate(-50px,'+(H/2-12+off)+'px)'},{transform:'translate('+W+'px,'+(H/2-12+off)+'px)'}];
+    if(s.animate) s.animate(kf,{duration:2200,easing:'ease-in-out'}).onfinish=()=>s.remove(); else s.remove();
+    if(++n<8) setTimeout(spawn,180);
+  };
+  if(!reduce) spawn();
+  setTimeout(()=>win(2, PT.errs===0?3:PT.errs<=2?2:1, 'O caminho está montado: escorregador → cozinha → tesoura → limpeza → uretra.'), reduce?400:2800);
+}
+
+/* ---------- FASE 3: Chuva de ingredientes ---------- */
+const GOAL=6;
+const C={running:false, round:0, hearts:5, got:0, items:[], last:0, spawn:0, x:0, tx:0, keys:{}, raf:0, over:false, lost:false};
+function startCatch(){ C.round=0; C.hearts=5; C.lost=false; go('catch'); roundIntro(); }
+function stopCatch(){ C.running=false; cancelAnimationFrame(C.raf); clearItems(); }
+function clearItems(){ C.items.forEach(it=>it.el.remove()); C.items=[]; document.querySelectorAll('#arena .pop').forEach(p=>p.remove()); }
+function catchHud(){
+  const g=GL[ORDER[C.round]]||GL.cow;
+  $('arena').style.setProperty('--c',g.c); $('cGoalWrap').style.setProperty('--c',g.c);
+  $('cHearts').textContent='❤️'.repeat(Math.max(0,C.hearts))+'🤍'.repeat(Math.max(0,5-C.hearts));
+  $('cGoalTx').textContent=C.got+' / '+GOAL; $('cGoal').style.width=(C.got/GOAL*100)+'%';
+  $('cEyebrow').textContent='Fase 3 · Chuva de ingredientes · rodada '+(C.round+1)+' de 3';
+  $('catchAva').innerHTML=ch(ORDER[Math.min(C.round,2)]); $('catchName').textContent=g.nick;
+}
+function roundIntro(msg){
+  stopCatch(); C.got=0; catchHud();
+  const k=ORDER[C.round], g=GL[k];
+  $('cTitle').textContent='Você é '+g.nick+'!';
+  const ov=$('cOverlay'); ov.hidden=false;
+  ov.innerHTML='<div class="ov-card" style="--c:'+g.c+'">'+(msg?'<b style="color:var(--ok)">'+msg+'</b>':'')+'<div class="ava">'+ch(k)+'</div><h3>Rodada '+(C.round+1)+': '+g.name+'</h3><p>Mova '+g.nick+' e pegue <b>só</b> estes ingredientes:</p><div class="tags">'+g.ing.map(i=>'<span>'+ING[i].n+'</span>').join('')+'</div><p style="color:var(--muted);font-size:14px">Pegou um intruso? Perde um coração. Pegue '+GOAL+' certos para passar!</p><button class="btn big" id="goRound">Começar! ▶</button></div>';
+  $('goRound').addEventListener('click',beginRound); $('goRound').focus();
+  const A=$('arena'); C.x=C.tx=A.clientWidth/2; placeCatcher();
+}
+function beginRound(){
+  $('cOverlay').hidden=true; C.got=0; catchHud(); C.running=true; C.spawn=.3; C.last=performance.now();
+  C.raf=requestAnimationFrame(loop);
+}
+function placeCatcher(){ $('catcher').style.transform='translateX('+(C.x-64)+'px)'; }
+function loop(t){
+  if(!C.running) return;
+  const dt=Math.min((t-C.last)/1000,.05); C.last=t;
+  const A=$('arena'), W=A.clientWidth, H=A.clientHeight;
+  if(C.keys.L) C.tx-=520*dt; if(C.keys.R) C.tx+=520*dt;
+  C.tx=Math.max(64,Math.min(W-64,C.tx));
+  C.x+=(C.tx-C.x)*Math.min(1,dt*16); placeCatcher();
+  C.spawn-=dt;
+  if(C.spawn<=0){ spawnItem(W); C.spawn=Math.max(.42,.85-C.got*.06-C.round*.05); }
+  const top=H-10-18-72+10;
+  for(const it of C.items){
+    it.y+=it.vy*dt; it.el.style.transform='translate('+it.x+'px,'+it.y+'px)';
+    if(!it.done && it.y+it.h>=top && it.y<top+30 && it.x+it.w>C.x-58 && it.x<C.x+58){ it.done=true; caught(it); }
+    if(it.y>H) it.done=true;
+  }
+  C.items=C.items.filter(it=>{ if(it.done){ it.el.remove(); return false; } return true; });
+  if(C.running) C.raf=requestAnimationFrame(loop);
+}
+function spawnItem(W){
+  const k=ORDER[C.round], mine=GL[k].ing, others=Object.keys(ING).filter(i=>!mine.includes(i));
+  const good=Math.random()<.55, id=good?mine[Math.floor(Math.random()*mine.length)]:others[Math.floor(Math.random()*others.length)];
+  const el=document.createElement('div'); el.className='item'; el.textContent=ING[id].n; $('arena').append(el);
+  const w=el.offsetWidth, h=el.offsetHeight;
+  const it={el,id,good,w,h,x:Math.random()*(W-w),y:-h,vy:155+C.got*17+Math.random()*45+C.round*22,done:false};
+  el.style.transform='translate('+it.x+'px,'+it.y+'px)'; C.items.push(it);
+}
+function popAt(x,y,text,kind){ const p=document.createElement('div'); p.className='pop '+kind; p.textContent=text; p.style.left=Math.max(4,Math.min(x,$('arena').clientWidth-160))+'px'; p.style.top=y+'px'; $('arena').append(p); setTimeout(()=>p.remove(),1300); }
+function caught(it){
+  const c=$('catcher'); c.classList.remove('gulp'); void c.offsetWidth; c.classList.add('gulp');
+  if(it.good){
+    C.got++; sPop(); popAt(it.x,it.y-10,'+ '+ING[it.id].n+': '+ING[it.id].s,'good'); catchHud();
+    if(C.got>=GOAL){
+      C.running=false; sOk();
+      if(C.round<2){ C.round++; setTimeout(()=>roundIntro('Rodada concluída! 🎉'),500); }
+      else setTimeout(()=>{ stopCatch(); const s=C.lost?1:C.hearts>=4?3:C.hearts>=2?2:1; win(3,s,'Você separou os ingredientes das três glândulas com '+C.hearts+' coração(ões) sobrando.'); },500);
+    }
+  } else {
+    C.hearts--; sBad(); const ing=ING[it.id];
+    popAt(it.x,it.y-10, ing.bad || (ing.n+'? É '+(ing.home==='pro'?'da próstata':ing.home==='ves'?'da cozinha':'da limpeza')+'!'),'bad');
+    const A=$('arena'); A.classList.remove('hit'); void A.offsetWidth; A.classList.add('hit'); catchHud();
+    if(C.hearts<=0){
+      C.running=false; C.lost=true; clearItems();
+      const ov=$('cOverlay'); ov.hidden=false;
+      ov.innerHTML='<div class="ov-card" style="--c:var(--alarm)"><div class="ava">💔</div><h3>Acabaram os corações!</h3><p>Muitos intrusos entraram na receita. Lembre: '+GL[ORDER[C.round]].nick+' só pega '+GL[ORDER[C.round]].ing.map(i=>ING[i].n).join(', ')+'.</p><button class="btn big" id="retry">Tentar de novo (3 ❤️)</button></div>';
+      $('retry').addEventListener('click',()=>{ C.hearts=3; roundIntro(); });
+    }
+  }
+}
+const arena=$('arena');
+function aim(e){ const r=arena.getBoundingClientRect(); C.tx=e.clientX-r.left; }
+arena.addEventListener('pointermove',aim); arena.addEventListener('pointerdown',aim);
+window.addEventListener('keydown',e=>{ if(current!=='catch') return; if(e.key==='ArrowLeft'){C.keys.L=true;e.preventDefault();} if(e.key==='ArrowRight'){C.keys.R=true;e.preventDefault();} });
+window.addEventListener('keyup',e=>{ if(e.key==='ArrowLeft')C.keys.L=false; if(e.key==='ArrowRight')C.keys.R=false; });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&C.running){ C.running=false; cancelAnimationFrame(C.raf); const ov=$('cOverlay'); ov.hidden=false; ov.innerHTML='<div class="ov-card"><h3>Pausado</h3><button class="btn big" id="resume">Continuar ▶</button></div>'; $('resume').addEventListener('click',()=>{ ov.hidden=true; C.running=true; C.last=performance.now(); C.raf=requestAnimationFrame(loop); }); } });
+
+/* ---------- FASE 4: Laboratório ---------- */
+const SRC = [
+  {k:'ves', label:'Cozinha', full:'vesículas seminais', e:'🍯', c:'var(--ves)', max:4, step:0.05, ph:8.0},
+  {k:'pro', label:'Tesoura', full:'próstata', e:'✂️', c:'var(--pro)', max:2, step:0.05, ph:6.5},
+  {k:'cow', label:'Limpeza', full:'bulbouretrais', e:'🧽', c:'var(--cow)', max:0.5, step:0.01, ph:7.6},
+  {k:'spz', label:'Nadadores', full:'espermatozoides', e:'🏊', c:'var(--spz)', max:0.5, step:0.01, ph:7.0}
+];
+const IDEAL={ves:2.0,pro:0.8,cow:0.1,spz:0.1};
+const START={ves:0.6,pro:1.5,cow:0.35,spz:0.0};
+let mix={...START}, labHint=false, labDone=false;
+const fmt=(n,d=2)=>n.toFixed(d).replace('.',',');
+function analyze(m){
+  const total=m.ves+m.pro+m.cow+m.spz, pct=k=>total>0?m[k]/total*100:0;
+  const ph= total>0 ? SRC.reduce((a,s)=>a+m[s.k]*s.ph,0)/total : null;
+  return [
+    {n:'Quantidade', v:fmt(total)+' mL', st: total<1.4?'bad':total>6?'warn':'ok', t: total<1.4?'Pouquinho! Precisa de pelo menos 1,4 mL.':total>6?'Muito! O normal vai até uns 5 mL.':'Boa quantidade.'},
+    {n:'pH', v: ph?fmt(ph,1):'—', st: ph===null||ph<7.2?'bad':ph>8.0?'warn':'ok', t: ph===null?'Tubo vazio.':ph<7.2?'Azedo demais! Os nadadores cansam. Mais cozinha!':'Um pouco básico: perfeito.'},
+    {n:'Lanche', v:fmt(pct('ves'),0)+'% cozinha', st: pct('ves')<50?'bad':pct('ves')>80?'warn':'ok', t: pct('ves')<50?'Pouca frutose! Sem energia.':pct('ves')>80?'Cozinha demais.':'Energia garantida (meta: 60–70%).'},
+    {n:'Tesoura', v:fmt(pct('pro'),0)+'% próstata', st: pct('pro')<15?'bad':pct('pro')>35?'warn':'ok', t: pct('pro')<15?'Gelatina presa! Falta PSA.':pct('pro')>35?'Tesoura demais (meta: 20–30%).':'A gelatina se desmancha.'},
+    {n:'Nadadores', v:fmt(pct('spz'),1)+'%', st: m.spz<0.02?'bad':pct('spz')>10?'warn':'ok', t: m.spz<0.02?'Cadê os nadadores?':pct('spz')>10?'Demais! São só 2–5%.':'Nadadores a bordo!'},
+    {n:'Limpeza', v:fmt(m.cow)+' mL', st: m.cow<0.02||pct('cow')>8?'warn':'ok', t: m.cow<0.02?'Caminho sujo e seco.':pct('cow')>8?'Limpeza demais: é só um pouquinho.':'Caminho limpinho.'}
+  ];
+}
+function readoutsHTML(R){ return R.map(r=>'<div class="ro '+r.st+'"><div class="ro-top"><b><span class="dot '+r.st+'"></span>'+r.n+'</b><span class="val">'+r.v+'</span></div><small>'+r.t+'</small></div>').join(''); }
+function fillTube(el,m,max){
+  el.innerHTML='';
+  ['spz','pro','ves','cow'].forEach(k=>{ const i=document.createElement('i'); i.style.setProperty('--c',SRC.find(s=>s.k===k).c); i.style.height=Math.min(m[k]/max*100,100)+'%'; el.append(i); });
+  if(!reduce) for(let b=0;b<5;b++){ const s=document.createElement('span'); s.className='bub'; s.style.left=(10+b*17)%80+'%'; s.style.animationDelay=(b*.5)+'s'; el.append(s); }
+}
+function buildDials(){
+  const d=$('dials'); d.innerHTML='';
+  SRC.forEach(s=>{
+    const w=document.createElement('div'); w.className='dial'; w.style.setProperty('--c',s.c);
+    w.innerHTML='<div class="dial-top"><label for="lab-'+s.k+'"><span class="e">'+(s.k==='spz'?nado():ch(s.k))+'</span>'+s.label+'</label><output id="out-'+s.k+'"></output></div><small>'+s.full+'</small><input type="range" id="lab-'+s.k+'" min="0" max="'+s.max+'" step="'+s.step+'">';
+    const inp=w.querySelector('input'); inp.value=mix[s.k];
+    inp.addEventListener('input',()=>{ mix[s.k]=parseFloat(inp.value); updateLab(); });
+    inp.addEventListener('change',checkLab);
+    d.append(w);
+  });
+}
+function updateLab(){
+  SRC.forEach(s=>{ $('out-'+s.k).textContent=fmt(mix[s.k])+' mL'; });
+  const tube=$('tube'); const prev=tube.querySelectorAll('i');
+  if(prev.length===4){ ['spz','pro','ves','cow'].forEach((k,i)=>prev[i].style.height=Math.min(mix[k]/6*100,100)+'%'); } else fillTube(tube,mix,6);
+  const R=analyze(mix), ok=R.filter(r=>r.st==='ok').length;
+  $('readouts').innerHTML=readoutsHTML(R);
+  $('labCount').textContent=ok+' de 6 medidores verdes'+(ok===6?' 🎉':'');
+  $('labBar').style.width=(ok/6*100)+'%';
+  return ok;
+}
+function checkLab(){ if(!labDone && updateLab()===6){ labDone=true; setTimeout(()=>win(4, labHint?1:3, labHint?'Receita certa! Da próxima vez, tente sem a dica para ganhar 3 estrelas.':'Você acertou a receita sozinho(a): muita cozinha, um pouco de tesoura e só um pouquinho de limpeza e nadadores.'),400); } }
+function startLab(){ mix={...START}; labHint=false; labDone=false; go('lab'); buildDials(); fillTube($('tube'),mix,6); updateLab(); }
+$('hintBtn').addEventListener('click',()=>{ labHint=true; mix={...IDEAL}; SRC.forEach(s=>{ $('lab-'+s.k).value=mix[s.k]; }); checkLab(); });
+
+/* ---------- FASE 5: Detetive ---------- */
+const CASES = [
+  {mix:{ves:0.05,pro:0.7,cow:0.05,spz:0}, q:'Quase não tem líquido, está azedo e sem lanche. Quem faltou?', a:'ves', fb:'A cozinha (vesículas seminais)! Sem ela, some a maior parte do líquido, a frutose e o pH certinho. Pode acontecer quando o tubo da cozinha entope.'},
+  {mix:{ves:2.0,pro:0.1,cow:0.1,spz:0.1}, q:'Quantidade e pH bons, mas depois de 1 hora ainda é uma gelatina grossa. Quem faltou?', a:'pro', fb:'A tesoura (próstata)! Sem PSA, ninguém corta a gelatina e os nadadores ficam presos.'},
+  {mix:{ves:2.0,pro:0.8,cow:0.1,spz:0}, q:'Tudo normal: quantidade, pH, lanche, tesoura. Mas nenhum nadador! O que houve?', a:'def', fb:'O escorregador (ducto deferente) foi cortado: é a vasectomia. Como quase todo o líquido vem dos ajudantes, o sêmen continua igualzinho, só que sem nadadores.'}
+];
+const DOPTS=[['ves','A cozinha (vesículas)'],['pro','A tesoura (próstata)'],['cow','A limpeza (bulbouretrais)'],['def','O escorregador foi cortado (vasectomia)']];
+let DT;
+function startDetective(){ DT={i:0,errs:0,order:shuffle([0,1,2])}; go('detective'); renderCase(); }
+function renderCase(){
+  const c=CASES[DT.order[DT.i]], card=$('dCard');
+  $('dCount').textContent='Caso '+(DT.i+1)+' de 3';
+  card.innerHTML='<div class="talk">'+nado('bob')+'<div class="bubble"><b>Amostra misteriosa '+'ABC'[DT.i]+'</b><br><span></span></div></div><div class="case"><div class="tube-wrap" style="justify-content:center"><div class="tube small" id="dTube"></div></div><div class="readouts">'+readoutsHTML(analyze(c.mix))+'</div></div><div class="opts"></div><div class="feedback" hidden></div><div class="nav"><span></span><button class="btn big" id="dNext" hidden></button></div>';
+  card.querySelector('.bubble span').textContent=c.q;
+  fillTube($('dTube'),c.mix,4);
+  const opts=card.querySelector('.opts'), fb=card.querySelector('.feedback'); let done=false;
+  shuffle(DOPTS).forEach(([k,label])=>{
+    const b=document.createElement('button'); b.className='opt withart';
+    b.innerHTML=(k==='def'?'<svg class="ch" viewBox="0 0 100 100" aria-hidden="true"><path d="M10 70 C30 20 70 80 90 30" stroke="var(--muted)" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="34 10"/></svg>':ch(k))+'<span></span>';
+    b.querySelector('span').textContent=label;
+    b.addEventListener('click',()=>{
+      if(done) return;
+      if(k===c.a){ done=true; b.classList.add('right'); fb.hidden=false; fb.className='feedback ok'; fb.textContent='🕵️ Acertou, detetive! '+c.fb; sOk(); const n=$('dNext'); n.hidden=false; n.textContent=DT.i<2?'Próximo caso →':'Fechar o caso 🏁'; n.focus(); }
+      else { DT.errs++; b.classList.remove('wrong'); void b.offsetWidth; b.classList.add('wrong'); fb.hidden=false; fb.className='feedback err'; fb.textContent='❌ Quase! Olhe quais medidores ficaram vermelhos e pense em quem cuida daquilo.'; sBad(); }
+    });
+    opts.append(b);
+  });
+  $('dNext').addEventListener('click',()=>{ if(DT.i<2){ DT.i++; renderCase(); } else win(5, DT.errs===0?3:DT.errs===1?2:1, 'Você resolveu os três casos com '+DT.errs+' erro(s).'); });
+}
+
+/* ---------- Diploma ---------- */
+function showEnd(){
+  go('end'); $('endNado').innerHTML=nado('bob'); $('endNado').firstChild.style.width='140px';
+  const t=totalStars(); $('dipStars').innerHTML='⭐ '+t+' de 15';
+  $('nameInput').value=P.name||''; $('dipName').textContent=P.name||'Seu nome aqui';
+  confetti(); sWin();
+}
+$('nameInput').addEventListener('input',e=>{ P.name=e.target.value.slice(0,24); $('dipName').textContent=P.name||'Seu nome aqui'; save(); });
+$('nameInput').addEventListener('change',()=>syncRank());
+$('endMap').addEventListener('click',()=>go('map'));
+
+$('fichaAnat').innerHTML=anatomy('')+'<small>Esquema simplificado, vista de frente</small>';
+
+/* ---------- Ranking ao vivo ----------
+   room (presença): quem está com o jogo aberto agora, com nome e estrelas.
+   db (ranking/<id>): placar salvo, para quem pode gravar. Os dois se juntam na tela. */
+let DB=null, ROOM=null, USER=null, UID=null, rankReady=false, dbWritable=true, writing=Promise.resolve();
+const RK={rows:new Map(), peers:[]};
+const LVL_NAME = ()=>{ const l=LEVELS.find(x=>'s-'+x.key===('s-'+current)); return l?l.name:(current==='end'?'Diploma':current==='rank'?'Ranking':'Mapa'); };
+const clampStars = v=>{ v=Number(v); return isFinite(v)?Math.max(0,Math.min(15,Math.round(v))):0; };
+function pushPresence(){
+  if(!ROOM) return;
+  ROOM.presence({nick:(P.name||'').trim().slice(0,24)||null, stars:totalStars(), lvl:LVL_NAME()}).catch(()=>{});
+}
+function syncRank(){
+  pushPresence();
+  const nick=(P.name||'').trim().slice(0,24);
+  if(!DB||!UID||!nick||!dbWritable) return;
+  const body={nick, stars:totalStars(), levels:Object.assign({},P.stars), updatedAt:Date.now()};
+  writing = writing.then(()=>DB.doc('ranking/'+UID).set(body)).catch(e=>{ if(e&&e.code==='invalid_argument') dbWritable=false; });
+}
+function renderRank(){
+  const list=$('rankList'); if(!list) return;
+  const E=new Map();
+  RK.rows.forEach((r,id)=>{ if(!r||!r.nick) return; E.set('u:'+id,{nick:String(r.nick).slice(0,24), stars:clampStars(r.stars), online:false, me:id===UID, lvl:''}); });
+  let live=0;
+  RK.peers.forEach(p=>{
+    if(p.kind!=='viewer') return;
+    const pr=p.presence||{}; const nick=typeof pr.nick==='string'?pr.nick.slice(0,24):'';
+    const key=p.by?'u:'+p.by:'p:'+p.peer; const prev=E.get(key);
+    live++;
+    if(!nick && !prev) return;
+    E.set(key,{nick:nick||prev.nick, stars:Math.max(clampStars(pr.stars), prev?prev.stars:0), online:true, me:p.isMe||(prev&&prev.me), lvl:typeof pr.lvl==='string'?pr.lvl.slice(0,40):''});
+  });
+  const arr=[...E.values()].sort((a,b)=>b.stars-a.stars||a.nick.localeCompare(b.nick));
+  $('rankLive').textContent=live+' jogando agora';
+  list.innerHTML='';
+  arr.forEach((e,i)=>{
+    const li=document.createElement('li'); if(e.me) li.className='me';
+    li.innerHTML='<span class="pos">'+(['🥇','🥈','🥉'][i]||(i+1)+'º')+'</span><span class="who"><b></b><small><span class="live'+(e.online?' on':'')+'"></span><span class="st"></span></small><span class="sbar"><i style="width:'+(e.stars/15*100)+'%"></i></span></span><span class="score">⭐ '+e.stars+'</span>';
+    li.querySelector('b').textContent=e.nick+(e.me?' (você)':'');
+    li.querySelector('.st').textContent=e.online?('jogando agora'+(e.lvl?' · '+e.lvl:'')):'offline';
+    list.append(li);
+  });
+  $('rankEmpty').hidden = arr.length>0;
+  $('rankStatus').textContent = (ROOM||DB)
+    ? 'O placar atualiza sozinho. Ponto verde: está jogando agora. Escreva seu nome no mapa para aparecer aqui.'
+    : (rankReady ? 'O ranking da turma só funciona para quem abre o jogo logado no claude.ai e tem acesso ao jogo. Você pode jogar normalmente; suas estrelas ficam salvas neste aparelho.' : 'Conectando ao placar…');
+}
+(async()=>{
+  const c=window.claude;
+  if(c&&typeof c.use==='function'){
+    try{ USER=await c.use('user'); if(USER) UID=await USER.id(); }catch(e){}
+    try{ DB=await c.use('db'); }catch(e){ DB=null; }
+    try{ ROOM=await c.use('room'); }catch(e){ ROOM=null; }
+  }
+  rankReady=true;
+  if(!DB && !ROOM){
+    // Sem placar (fora do claude.ai ou sem login): o nome vai só para o diploma.
+    $('rankBtn').hidden=true;
+    $('nameForm').querySelector('label b').textContent='Seu nome';
+    $('nameForm').querySelector('label small').textContent='Ele aparece no seu diploma no final do jogo';
+    if(current==='rank') go('map');
+  }
+  if(DB){
+    try{ DB.collection('ranking').orderBy('stars','desc').limit(300).onSnapshot(s=>{ RK.rows=new Map(s.docs.filter(d=>d.exists).map(d=>[d.id,d.data()])); renderRank(); }, ()=>{}); }catch(e){}
+    if(USER){ try{ if(await USER.isOwner()) $('rankOwner').hidden=false; }catch(e){} }
+    try{ if(USER && (await USER.can('data.write'))===false) dbWritable=false; }catch(e){}
+  }
+  if(ROOM){ try{ ROOM.onPeers(ch=>{ RK.peers=ch.peers; renderRank(); }, ()=>{}); }catch(e){} }
+  renderRank(); syncRank();
+})();
+$('rankReset').addEventListener('click',()=>{ $('rankResetConfirm').hidden=false; });
+$('rankResetNo').addEventListener('click',()=>{ $('rankResetConfirm').hidden=true; });
+$('rankResetYes').addEventListener('click',async()=>{
+  $('rankResetConfirm').hidden=true; if(!DB) return;
+  try{ const s=await DB.collection('ranking').limit(1000).get(); for(const d of s.docs){ await DB.doc('ranking/'+d.id).delete(); } }catch(e){}
+});
+
+/* Nome no mapa */
+$('nameForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const v=$('nickInput').value.trim().slice(0,24);
+  P.name=v; save(); syncRank();
+  $('nickMsg').textContent = v ? 'Pronto, '+v+'!'+((DB||ROOM)?' Suas estrelas vão para o ranking.':'') : 'Nome apagado.';
+  sOk();
+});
+$('nickInput').value=P.name||'';
+
+renderMap();
+})();
+</script>
+
+</body>
+</html>
